@@ -1,2 +1,2 @@
-# Vantage-news-
-independent reporting. a wider view 
+#BASH-Explains#
+politics explained 
