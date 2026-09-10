@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bash Explains — Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  body { margin: 0; }
+  #status-message {
+    font-family: -apple-system, sans-serif;
+    padding: 24px;
+    color: #334155;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="status-message">Loading admin dashboard…</div>
+</div>
+<script>
+  window.addEventListener("error", function (e) {
+    var el = document.getElementById("status-message");
+    if (el) {
+      el.innerHTML =
+        "<strong>Something went wrong.</strong><br/><br/>Error: " + (e.message || "unknown error");
+    }
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.6/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+function slugify(title) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
+const COLOR_CHOICES = [
+  "amber", "emerald", "rose", "sky", "violet", "red", "orange", "yellow",
+  "lime", "green", "teal", "cyan", "blue", "indigo", "purple", "fuchsia",
+  "pink", "stone", "zinc", "neutral", "slate",
+];
+
+function emptySection() {
+  return { header: "", content: "" };
+}
+function emptyKeyTerm() {
+  return { term: "", definition: "" };
+}
+function emptyExplainer() {
+  return {
+    id: "",
+    title: "",
+    category: "",
+    summary: "",
+    readTime: 5,
+    featured: false,
+    freeCount: 2,
+    tldr: "",
+    sections: [emptySection(), emptySection()],
+    keyTerms: [emptyKeyTerm()],
+  };
+}
+
+function TextInput({ label, value, onChange, placeholder, type = "text" }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(type === "number" ? Number(e.target.value) : e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+      />
+    </div>
+  );
+}
+
+function TextArea({ label, value, onChange, rows = 3, placeholder }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+      />
+    </div>
+  );
+}
+
+function AdminApp() {
+  const [password, setPassword] = useState("");
+  const [unlocked, setUnlocked] = useState(false);
+  const [data, setData] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [view, setView] = useState("list"); // "list" | "edit"
+  const [form, setForm] = useState(emptyExplainer());
+  const [isNewCategory, setIsNewCategory] = useState(false);
+  const [newCategoryColor, setNewCategoryColor] = useState("slate");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null); // { type: "success"|"error", text }
+
+  useEffect(() => {
+    fetch("/data.json")
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => setLoadError("Could not load data.json"));
+  }, []);
+
+  if (loadError) {
+    return <div className="p-8 text-rose-600">{loadError}</div>;
+  }
+  if (!data) {
+    return <div className="p-8 text-slate-500">Loading…</div>;
+  }
+
+  if (!unlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
+        <div className="w-full max-w-sm rounded-lg border border-stone-300 bg-white p-6">
+          <h1 className="text-xl font-semibold text-slate-900 mb-1">Bash Explains Admin</h1>
+          <p className="text-sm text-slate-500 mb-4">Enter the admin password to continue.</p>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500 mb-3"
+            onKeyDown={(e) => e.key === "Enter" && setUnlocked(true)}
+          />
+          <button
+            onClick={() => setUnlocked(true)}
+            className="w-full rounded-md bg-slate-900 text-white text-sm font-medium py-2.5 hover:bg-slate-800"
+          >
+            Unlock
+          </button>
+          <p className="text-xs text-slate-400 mt-3">
+            The password itself is checked again on the server when you save —
+            this screen just avoids showing the form to random visitors.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const startNew = () => {
+    setForm(emptyExplainer());
+    setIsNewCategory(false);
+    setMessage(null);
+    setView("edit");
+  };
+
+  const startEdit = (explainer) => {
+    setForm(JSON.parse(JSON.stringify(explainer)));
+    setIsNewCategory(false);
+    setMessage(null);
+    setView("edit");
+  };
+
+  const updateField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const updateSection = (i, key, value) => {
+    setForm((f) => {
+      const sections = [...f.sections];
+      sections[i] = { ...sections[i], [key]: value };
+      return { ...f, sections };
+    });
+  };
+  const addSection = () => setForm((f) => ({ ...f, sections: [...f.sections, emptySection()] }));
+  const removeSection = (i) =>
+    setForm((f) => ({ ...f, sections: f.sections.filter((_, idx) => idx !== i) }));
+
+  const updateKeyTerm = (i, key, value) => {
+    setForm((f) => {
+      const keyTerms = [...f.keyTerms];
+      keyTerms[i] = { ...keyTerms[i], [key]: value };
+      return { ...f, keyTerms };
+    });
+  };
+  const addKeyTerm = () => setForm((f) => ({ ...f, keyTerms: [...f.keyTerms, emptyKeyTerm()] }));
+  const removeKeyTerm = (i) =>
+    setForm((f) => ({ ...f, keyTerms: f.keyTerms.filter((_, idx) => idx !== i) }));
+
+  const handleSave = async () => {
+    setMessage(null);
+    if (!form.title.trim()) {
+      setMessage({ type: "error", text: "Title is required." });
+      return;
+    }
+    if (!isNewCategory && !form.category) {
+      setMessage({ type: "error", text: "Pick a category, or choose to add a new one." });
+      return;
+    }
+    if (isNewCategory && !form.category.trim()) {
+      setMessage({ type: "error", text: "Enter a name for the new category." });
+      return;
+    }
+
+    const id = form.id || slugify(form.title);
+    const payload = {
+      password,
+      action: "upsert",
+      explainer: { ...form, id },
+    };
+    if (isNewCategory) {
+      payload.newCategory = { name: form.category, color: newCategoryColor };
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: result.error || "Save failed." });
+      } else {
+        setMessage({ type: "success", text: "Saved! It'll be live in about a minute once Vercel redeploys." });
+        // Reflect the change locally so the list updates without a refetch.
+        setData((d) => {
+          const explainers = d.explainers.filter((e) => e.id !== id);
+          explainers.push({ ...form, id });
+          const categories = isNewCategory
+            ? [...d.categories, { name: form.category, light: `bg-${newCategoryColor}-100 text-${newCategoryColor}-800`, dark: `bg-${newCategoryColor}-900/40 text-${newCategoryColor}-300` }]
+            : d.categories;
+          return { ...d, explainers, categories };
+        });
+        setView("list");
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Network error while saving." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (explainer) => {
+    if (!window.confirm(`Delete "${explainer.title}"? This can't be undone.`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "delete", id: explainer.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || "Delete failed.");
+      } else {
+        setData((d) => ({ ...d, explainers: d.explainers.filter((e) => e.id !== explainer.id) }));
+      }
+    } catch (err) {
+      alert("Network error while deleting.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (view === "list") {
+    return (
+      <div className="min-h-screen bg-stone-50">
+        <header className="border-b border-slate-800 bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between">
+          <span className="text-white font-semibold">Bash Explains Admin</span>
+          <button
+            onClick={startNew}
+            className="rounded-md bg-amber-500 text-slate-900 text-sm font-medium px-4 py-2 hover:bg-amber-400"
+          >
+            + New explainer
+          </button>
+        </header>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+          <p className="text-sm text-slate-500 mb-4">{data.explainers.length} explainers</p>
+          <div className="space-y-2">
+            {data.explainers.map((e) => (
+              <div key={e.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{e.title}</p>
+                  <p className="text-xs text-slate-500">{e.category}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => startEdit(e)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                  <button onClick={() => handleDelete(e)} className="text-sm text-rose-600 hover:underline">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-stone-50">
+      <header className="border-b border-slate-800 bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between">
+        <span className="text-white font-semibold">{form.id ? "Edit explainer" : "New explainer"}</span>
+        <button onClick={() => setView("list")} className="text-sm text-stone-300 hover:text-white">
+          Back to list
+        </button>
+      </header>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+        {message && (
+          <div className={`mb-4 rounded-md px-4 py-3 text-sm ${message.type === "success" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-700"}`}>
+            {message.text}
+          </div>
+        )}
+
+        <TextInput label="Title" value={form.title} onChange={(v) => updateField("title", v)} placeholder="e.g. Why Nigeria's Federalism Struggles" />
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+          {!isNewCategory ? (
+            <div className="flex gap-2">
+              <select
+                value={form.category}
+                onChange={(e) => updateField("category", e.target.value)}
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">Select a category…</option>
+                {data.categories.map((c) => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => { setIsNewCategory(true); updateField("category", ""); }}
+                className="text-sm text-blue-600 whitespace-nowrap"
+              >
+                + New category
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 items-start">
+              <input
+                type="text"
+                value={form.category}
+                onChange={(e) => updateField("category", e.target.value)}
+                placeholder="New category name"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <select
+                value={newCategoryColor}
+                onChange={(e) => setNewCategoryColor(e.target.value)}
+                className="rounded-md border border-slate-300 px-2 py-2 text-sm"
+                title="Tag color"
+              >
+                {COLOR_CHOICES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button type="button" onClick={() => setIsNewCategory(false)} className="text-sm text-slate-500">
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+
+        <TextArea label="One-line summary (shown on the card)" value={form.summary} onChange={(v) => updateField("summary", v)} rows={2} />
+        <TextArea label="TL;DR (shown at the top of the explainer)" value={form.tldr} onChange={(v) => updateField("tldr", v)} rows={3} />
+
+        <div className="grid grid-cols-2 gap-4">
+          <TextInput label="Read time (minutes)" type="number" value={form.readTime} onChange={(v) => updateField("readTime", v)} />
+          <TextInput
+            label="Free sections (before paywall)"
+            type="number"
+            value={form.freeCount}
+            onChange={(v) => updateField("freeCount", v)}
+          />
+        </div>
+
+        <label className="flex items-center gap-2 mb-6 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.featured}
+            onChange={(e) => updateField("featured", e.target.checked)}
+          />
+          Feature this as "Concept of the Week" (unfeatures any other explainer)
+        </label>
+
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-slate-700">Sections</label>
+            <button type="button" onClick={addSection} className="text-sm text-blue-600">+ Add section</button>
+          </div>
+          {form.sections.map((s, i) => (
+            <div key={i} className="mb-3 rounded-md border border-slate-200 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-slate-400">
+                  Section {i + 1} {i < (form.freeCount ?? 2) ? "(free)" : "(premium-locked)"}
+                </span>
+                {form.sections.length > 1 && (
+                  <button type="button" onClick={() => removeSection(i)} className="text-xs text-rose-600">Remove</button>
+                )}
+              </div>
+              <input
+                type="text"
+                value={s.header}
+                onChange={(e) => updateSection(i, "header", e.target.value)}
+                placeholder="Section header"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-2 outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <textarea
+                value={s.content}
+                onChange={(e) => updateSection(i, "content", e.target.value)}
+                placeholder="Section content"
+                rows={3}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-slate-700">Key terms</label>
+            <button type="button" onClick={addKeyTerm} className="text-sm text-blue-600">+ Add key term</button>
+          </div>
+          {form.keyTerms.map((k, i) => (
+            <div key={i} className="mb-2 flex gap-2">
+              <input
+                type="text"
+                value={k.term}
+                onChange={(e) => updateKeyTerm(i, "term", e.target.value)}
+                placeholder="Term"
+                className="w-1/3 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <input
+                type="text"
+                value={k.definition}
+                onChange={(e) => updateKeyTerm(i, "definition", e.target.value)}
+                placeholder="Definition"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              {form.keyTerms.length > 1 && (
+                <button type="button" onClick={() => removeKeyTerm(i)} className="text-xs text-rose-600">✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full rounded-md bg-amber-500 text-slate-900 font-medium py-3 hover:bg-amber-400 disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AdminApp />);
+</script>
+</body>
+</html>
