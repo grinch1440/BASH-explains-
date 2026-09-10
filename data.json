@@ -4035,36 +4035,6 @@
           "definition": "False information spread without necessarily intending to deceive."
         }
       ]
-    },
-    {
-      "id": "bash",
-      "title": "bash",
-      "category": "African Politics",
-      "summary": "im a gamer",
-      "readTime": 5,
-      "featured": false,
-      "freeCount": 2,
-      "tldr": "",
-      "sections": [
-        {
-          "header": "",
-          "content": ""
-        },
-        {
-          "header": "",
-          "content": ""
-        },
-        {
-          "header": "",
-          "content": ""
-        }
-      ],
-      "keyTerms": [
-        {
-          "term": "",
-          "definition": ""
-        }
-      ]
     }
   ],
   "topicDirectory": [
