@@ -133,7 +133,7 @@
       "category": "Political Geography",
       "summary": "Two words people use interchangeably, but political geographers treat as opposites.",
       "readTime": 4,
-      "featured": true,
+      "featured": false,
       "tldr": "A border is a fixed, agreed line between two states. A frontier is a zone, not a line — a fuzzy edge of control that hasn't hardened into a formal boundary yet.",
       "sections": [
         {
@@ -519,7 +519,7 @@
       "category": "Foundations of Politics",
       "summary": "The basic vocabulary and ideas that everything else in political science builds on.",
       "readTime": 7,
-      "featured": false,
+      "featured": true,
       "tldr": "Politics is how groups of people make collective decisions about power, resources, and rules when they don't naturally agree. Every other topic on this site — governments, elections, ideologies — is really just a variation on that basic problem.",
       "sections": [
         {
