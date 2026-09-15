@@ -4040,32 +4040,6 @@
           "definition": "False information spread without necessarily intending to deceive."
         }
       ]
-    },
-    {
-      "id": "testing",
-      "title": "Testing ",
-      "category": "Constitution ",
-      "summary": "Testing ",
-      "readTime": 5,
-      "featured": false,
-      "freeCount": 2,
-      "tldr": "Testing ",
-      "sections": [
-        {
-          "header": "",
-          "content": ""
-        },
-        {
-          "header": "",
-          "content": ""
-        }
-      ],
-      "keyTerms": [
-        {
-          "term": "",
-          "definition": ""
-        }
-      ]
     }
   ],
   "topicDirectory": [
