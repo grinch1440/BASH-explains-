@@ -133,7 +133,7 @@
       "category": "Political Geography",
       "summary": "Two words people use interchangeably, but political geographers treat as opposites.",
       "readTime": 4,
-      "featured": false,
+      "featured": true,
       "tldr": "A border is a fixed, agreed line between two states. A frontier is a zone, not a line — a fuzzy edge of control that hasn't hardened into a formal boundary yet.",
       "sections": [
         {
@@ -519,7 +519,7 @@
       "category": "Foundations of Politics",
       "summary": "The basic vocabulary and ideas that everything else in political science builds on.",
       "readTime": 7,
-      "featured": true,
+      "featured": false,
       "tldr": "Politics is how groups of people make collective decisions about power, resources, and rules when they don't naturally agree. Every other topic on this site — governments, elections, ideologies — is really just a variation on that basic problem.",
       "sections": [
         {
@@ -4412,5 +4412,7 @@
         "Political thinkers"
       ]
     }
-  ]
+  ],
+  "privacyPolicyHtml": "<h2>Information we collect</h2>\n<p>When you choose to purchase Premium access, we collect the email address you provide, solely to send you a payment receipt and to verify your payment with our payment processor, Paystack. We do not collect your name, phone number, or any other personal information.</p>\n<h2>Payment processing</h2>\n<p>Payments are processed by Paystack, a licensed payment processor. We do not see or store your card details — those are handled entirely by Paystack in accordance with their own privacy and security policies.</p>\n<h2>How Premium access is stored</h2>\n<p>Premium access is remembered locally on your device or browser. We do not maintain user accounts or a database of who has purchased Premium.</p>\n<h2>Third-party services</h2>\n<p>The app uses the following third-party services, each with their own privacy practices:</p>\n<ul><li>Paystack, for payment processing</li><li>Vercel, for hosting</li></ul>\n<h2>Contact</h2>\n<p>If you have questions about this privacy policy, you can reach us at the contact details provided in the app's Play Store listing.</p>",
+  "privacyPolicyUpdated": "2026-09-15T23:06:31.280Z"
 }

@@ -112,6 +112,8 @@ function AdminApp() {
   const [newCategoryColor, setNewCategoryColor] = useState("slate");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null); // { type: "success"|"error", text }
+  const [policyDraft, setPolicyDraft] = useState("");
+  const [policySaving, setPolicySaving] = useState(false);
 
   useEffect(() => {
     fetch("/data.json")
@@ -271,17 +273,48 @@ function AdminApp() {
     }
   };
 
+  const handleSavePrivacyPolicy = async () => {
+    setMessage(null);
+    setPolicySaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "updatePrivacyPolicy", html: policyDraft }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: result.error || "Save failed." });
+      } else {
+        setData((d) => ({ ...d, privacyPolicyHtml: policyDraft, privacyPolicyUpdated: new Date().toISOString() }));
+        setMessage({ type: "success", text: "Saved! It'll be live in about a minute." });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Network error while saving." });
+    } finally {
+      setPolicySaving(false);
+    }
+  };
+
   if (view === "list") {
     return (
       <div className="min-h-screen bg-stone-50">
         <header className="border-b border-slate-800 bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between">
           <span className="text-white font-semibold">Bash Explains Admin</span>
-          <button
-            onClick={startNew}
-            className="rounded-md bg-amber-500 text-slate-900 text-sm font-medium px-4 py-2 hover:bg-amber-400"
-          >
-            + New explainer
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setPolicyDraft(data.privacyPolicyHtml || ""); setMessage(null); setView("privacy"); }}
+              className="rounded-md border border-stone-600 text-stone-200 text-sm font-medium px-3 py-2 hover:border-stone-400"
+            >
+              Privacy policy
+            </button>
+            <button
+              onClick={startNew}
+              className="rounded-md bg-amber-500 text-slate-900 text-sm font-medium px-4 py-2 hover:bg-amber-400"
+            >
+              + New explainer
+            </button>
+          </div>
         </header>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
           <p className="text-sm text-slate-500 mb-4">{data.explainers.length} explainers</p>
@@ -299,6 +332,44 @@ function AdminApp() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "privacy") {
+    return (
+      <div className="min-h-screen bg-stone-50">
+        <header className="border-b border-slate-800 bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between">
+          <span className="text-white font-semibold">Privacy policy</span>
+          <button onClick={() => setView("list")} className="text-sm text-stone-300 hover:text-white">
+            Back to list
+          </button>
+        </header>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
+          {message && (
+            <div className={`mb-4 rounded-md px-4 py-3 text-sm ${message.type === "success" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-700"}`}>
+              {message.text}
+            </div>
+          )}
+          <p className="text-sm text-slate-500 mb-3">
+            This is shown at <code>/privacy-policy.html</code>. You can use basic HTML tags
+            like <code>&lt;h2&gt;</code>, <code>&lt;p&gt;</code>, and <code>&lt;ul&gt;&lt;li&gt;</code> —
+            the same formatting you see below.
+          </p>
+          <textarea
+            value={policyDraft}
+            onChange={(e) => setPolicyDraft(e.target.value)}
+            rows={20}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono outline-none focus:ring-2 focus:ring-amber-500 mb-4"
+          />
+          <button
+            onClick={handleSavePrivacyPolicy}
+            disabled={policySaving}
+            className="w-full rounded-md bg-amber-500 text-slate-900 font-medium py-3 hover:bg-amber-400 disabled:opacity-60"
+          >
+            {policySaving ? "Saving…" : "Save privacy policy"}
+          </button>
         </div>
       </div>
     );

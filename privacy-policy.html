@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy — Bash Explains</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 640px; margin: 0 auto; padding: 32px 20px; color: #1e293b; line-height: 1.6; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+  #updated { color: #94a3b8; font-size: 0.85rem; margin-bottom: 1.5rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; }
+  p, li { color: #334155; }
+  #policy-body { min-height: 40px; }
+</style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p id="updated"></p>
+  <div id="policy-body">Loading…</div>
+
+  <script>
+    fetch("/data.json")
+      .then((r) => r.json())
+      .then((data) => {
+        document.getElementById("policy-body").innerHTML =
+          data.privacyPolicyHtml || "<p>No privacy policy content has been added yet.</p>";
+        if (data.privacyPolicyUpdated) {
+          const d = new Date(data.privacyPolicyUpdated);
+          document.getElementById("updated").textContent =
+            "Last updated: " + d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+        }
+      })
+      .catch(() => {
+        document.getElementById("policy-body").innerHTML =
+          "<p>Could not load the privacy policy. Please try again later.</p>";
+      });
+  </script>
+</body>
+</html>

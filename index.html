@@ -9,40 +9,31 @@
 <link rel="icon" href="/icon-192.png" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
 <style>
-  body { margin: 0; }
+  body { margin: 0; background: #f8fafc; }
   #status-message {
-    font-family: -apple-system, sans-serif;
-    padding: 24px;
-    color: #334155;
-    line-height: 1.6;
-  }
-  #status-message code {
-    background: #f1f5f9;
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f172a;
+    font-size: 1.5rem;
+    letter-spacing: 0.02em;
   }
 </style>
 </head>
 <body>
 <div id="root">
-  <div id="status-message">
-    Loading Bash Explains…<br /><br />
-    If this message doesn't go away after a few seconds, your browser couldn't
-    reach one of the required scripts (React, Tailwind, or Babel), usually
-    because of no internet connection or a network/firewall block. Try
-    opening this file on a network without restrictive filtering, or open
-    your browser's developer console (F12) and check the Console tab for
-    the specific error.
-  </div>
+  <div id="status-message">Bash Explains</div>
 </div>
 <script>
   window.addEventListener("error", function (e) {
     var el = document.getElementById("status-message");
     if (el) {
-      el.innerHTML =
-        "<strong>Something went wrong loading the app.</strong><br/><br/>Error: " +
-        (e.message || "unknown error") +
-        "<br/><br/>Open your browser's developer console (F12 → Console tab) for full details, and share that with Claude.";
+      el.style.fontFamily = "-apple-system, sans-serif";
+      el.style.fontSize = "1rem";
+      el.style.color = "#64748b";
+      el.textContent = "Something went wrong loading the page. Please refresh.";
     }
   });
 </script>
@@ -51,7 +42,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.25.6/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script type="text/babel" data-presets="react">
-const { useState, useMemo, useEffect } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 
 /* Minimal inline icon set, standing in for lucide-react so this file
    can run directly in a browser with no build step. */
@@ -335,7 +326,11 @@ function PremiumModal({ dark, onClose }) {
 function HomePage({ dark, onOpen, onShowTopics }) {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const conceptOfWeek = useMemo(() => EXPLAINERS.find((e) => e.featured), []);
+  const gridRef = useRef(null);
+
+  const VISIBLE_CATEGORY_COUNT = 9; // "All" + 8 categories before collapsing
 
   const filtered = useMemo(() => {
     return EXPLAINERS.filter((item) => {
@@ -349,6 +344,14 @@ function HomePage({ dark, onOpen, onShowTopics }) {
       return matchesCategory && matchesSearch;
     });
   }, [search, activeCategory]);
+
+  const handleSelectCategory = (cat) => {
+    setActiveCategory(cat);
+    // Give the browser a beat to register the click before scrolling.
+    setTimeout(() => {
+      gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
@@ -401,30 +404,44 @@ function HomePage({ dark, onOpen, onShowTopics }) {
 
       {/* Category filters */}
       <div className="mt-4 flex flex-wrap gap-2">
-        {["All", ...CATEGORIES].map((cat) => {
-          const active = activeCategory === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`rounded-full text-sm px-3.5 py-1.5 border transition-colors ${
-                active
-                  ? dark
-                    ? "bg-amber-500 border-amber-500 text-slate-900"
-                    : "bg-slate-900 border-slate-900 text-white"
-                  : dark
-                  ? "border-slate-700 text-stone-300 hover:border-slate-500"
-                  : "border-stone-300 text-slate-600 hover:border-slate-400"
-              }`}
-            >
-              {cat}
-            </button>
-          );
-        })}
+        {(() => {
+          const allCats = ["All", ...CATEGORIES];
+          const visibleCats = showAllCategories ? allCats : allCats.slice(0, VISIBLE_CATEGORY_COUNT);
+          return visibleCats.map((cat) => {
+            const active = activeCategory === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => handleSelectCategory(cat)}
+                className={`rounded-full text-sm px-3.5 py-1.5 border transition-colors ${
+                  active
+                    ? dark
+                      ? "bg-amber-500 border-amber-500 text-slate-900"
+                      : "bg-slate-900 border-slate-900 text-white"
+                    : dark
+                    ? "border-slate-700 text-stone-300 hover:border-slate-500"
+                    : "border-stone-300 text-slate-600 hover:border-slate-400"
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          });
+        })()}
+        {["All", ...CATEGORIES].length > VISIBLE_CATEGORY_COUNT && (
+          <button
+            onClick={() => setShowAllCategories((v) => !v)}
+            className={`rounded-full text-sm px-3.5 py-1.5 border border-dashed transition-colors ${
+              dark ? "border-stone-600 text-stone-400 hover:border-stone-400" : "border-stone-400 text-slate-500 hover:border-slate-500"
+            }`}
+          >
+            {showAllCategories ? "Show less" : `Show all (${["All", ...CATEGORIES].length - VISIBLE_CATEGORY_COUNT} more)`}
+          </button>
+        )}
       </div>
 
       {/* Grid */}
-      <div className="mt-8">
+      <div ref={gridRef} className="mt-8 scroll-mt-4">
         <div className="flex items-center justify-between mb-4">
           <p className={`text-sm ${dark ? "text-stone-400" : "text-slate-500"}`}>
             {filtered.length} explainer{filtered.length !== 1 ? "s" : ""}
