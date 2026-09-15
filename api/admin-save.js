@@ -26,12 +26,12 @@ export default async function handler(req, res) {
     });
   }
 
-  const { password, action, explainer, id, newCategory } = req.body || {};
+  const { password, action, explainer, id, newCategory, html } = req.body || {};
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Incorrect password." });
   }
-  if (action !== "upsert" && action !== "delete") {
+  if (action !== "upsert" && action !== "delete" && action !== "updatePrivacyPolicy") {
     return res.status(400).json({ error: "Invalid action." });
   }
   if (action === "upsert" && (!explainer || !explainer.id || !explainer.title)) {
@@ -39,6 +39,9 @@ export default async function handler(req, res) {
   }
   if (action === "delete" && !id) {
     return res.status(400).json({ error: "Missing id to delete." });
+  }
+  if (action === "updatePrivacyPolicy" && typeof html !== "string") {
+    return res.status(400).json({ error: "Missing privacy policy content." });
   }
 
   const apiBase = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data.json`;
@@ -62,6 +65,9 @@ export default async function handler(req, res) {
     // Step 2: apply the change.
     if (action === "delete") {
       data.explainers = data.explainers.filter((e) => e.id !== id);
+    } else if (action === "updatePrivacyPolicy") {
+      data.privacyPolicyHtml = html;
+      data.privacyPolicyUpdated = new Date().toISOString();
     } else {
       // If this explainer is marked featured, unfeature every other one first.
       if (explainer.featured) {
@@ -91,6 +97,8 @@ export default async function handler(req, res) {
     const commitMessage =
       action === "delete"
         ? `Admin: delete explainer ${id}`
+        : action === "updatePrivacyPolicy"
+        ? "Admin: update privacy policy"
         : `Admin: ${explainer.id ? "update" : "add"} explainer ${explainer.id}`;
 
     const putRes = await fetch(apiBase, {
