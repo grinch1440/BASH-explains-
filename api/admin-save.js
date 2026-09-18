@@ -26,12 +26,12 @@ export default async function handler(req, res) {
     });
   }
 
-  const { password, action, explainer, id, newCategory, html } = req.body || {};
+  const { password, action, explainer, id, newCategory, html, categoryName } = req.body || {};
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Incorrect password." });
   }
-  if (action !== "upsert" && action !== "delete" && action !== "updatePrivacyPolicy") {
+  if (action !== "upsert" && action !== "delete" && action !== "updatePrivacyPolicy" && action !== "deleteCategory") {
     return res.status(400).json({ error: "Invalid action." });
   }
   if (action === "upsert" && (!explainer || !explainer.id || !explainer.title)) {
@@ -42,6 +42,9 @@ export default async function handler(req, res) {
   }
   if (action === "updatePrivacyPolicy" && typeof html !== "string") {
     return res.status(400).json({ error: "Missing privacy policy content." });
+  }
+  if (action === "deleteCategory" && !categoryName) {
+    return res.status(400).json({ error: "Missing category name to delete." });
   }
 
   const apiBase = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data.json`;
@@ -68,6 +71,14 @@ export default async function handler(req, res) {
     } else if (action === "updatePrivacyPolicy") {
       data.privacyPolicyHtml = html;
       data.privacyPolicyUpdated = new Date().toISOString();
+    } else if (action === "deleteCategory") {
+      const inUse = data.explainers.filter((e) => e.category === categoryName).length;
+      if (inUse > 0) {
+        return res.status(400).json({
+          error: `Can't delete "${categoryName}" — ${inUse} explainer(s) still use it.`,
+        });
+      }
+      data.categories = data.categories.filter((c) => c.name !== categoryName);
     } else {
       // If this explainer is marked featured, unfeature every other one first.
       if (explainer.featured) {
@@ -99,6 +110,8 @@ export default async function handler(req, res) {
         ? `Admin: delete explainer ${id}`
         : action === "updatePrivacyPolicy"
         ? "Admin: update privacy policy"
+        : action === "deleteCategory"
+        ? `Admin: delete category ${categoryName}`
         : `Admin: ${explainer.id ? "update" : "add"} explainer ${explainer.id}`;
 
     const putRes = await fetch(apiBase, {
