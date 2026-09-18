@@ -934,9 +934,54 @@ function BashExplains() {
           <HomePage dark={dark} onOpen={handleOpen} onShowTopics={handleShowTopics} />
         )}
 
-        <footer className={`border-t mt-8 ${dark ? "border-slate-700" : "border-stone-300"}`}>
-          <div className={`max-w-5xl mx-auto px-4 sm:px-6 py-6 text-xs ${dark ? "text-stone-500" : "text-slate-400"}`}>
-            Bash Explains — an offshoot of Bash Insights.
+        <footer className={`border-t mt-8 ${dark ? "border-slate-700 bg-slate-900" : "border-stone-300 bg-stone-100"}`}>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div>
+              <p
+                className={`text-lg ${dark ? "text-stone-50" : "text-slate-900"}`}
+                style={{ fontFamily: "'Spectral', serif" }}
+              >
+                Bash Explains
+              </p>
+              <p className={`mt-2 text-sm leading-relaxed ${dark ? "text-stone-400" : "text-slate-500"}`}>
+                Political science, geopolitics, and current affairs, broken down into
+                simple explainers for students.
+              </p>
+            </div>
+            <div>
+              <p className={`text-xs font-medium tracking-wide uppercase ${dark ? "text-stone-500" : "text-slate-400"}`}>
+                Explore
+              </p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <button onClick={handleBack} className={dark ? "text-stone-300 hover:text-stone-100" : "text-slate-600 hover:text-slate-900"}>
+                    All topics
+                  </button>
+                </li>
+                <li>
+                  <button onClick={handleShowTopics} className={dark ? "text-stone-300 hover:text-stone-100" : "text-slate-600 hover:text-slate-900"}>
+                    Topic directory
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className={`text-xs font-medium tracking-wide uppercase ${dark ? "text-stone-500" : "text-slate-400"}`}>
+                Legal
+              </p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <a href="/privacy-policy.html" className={dark ? "text-stone-300 hover:text-stone-100" : "text-slate-600 hover:text-slate-900"}>
+                    Privacy Policy
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className={`border-t ${dark ? "border-slate-800" : "border-stone-200"}`}>
+            <div className={`max-w-5xl mx-auto px-4 sm:px-6 py-4 text-xs ${dark ? "text-stone-500" : "text-slate-400"}`}>
+              © {new Date().getFullYear()} Bash Explains.
+            </div>
           </div>
         </footer>
 
@@ -945,7 +990,6 @@ function BashExplains() {
     </div>
   );
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(<BashExplains />);
 </script>
 <script>
