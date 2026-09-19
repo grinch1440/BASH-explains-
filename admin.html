@@ -114,6 +114,7 @@ function AdminApp() {
   const [message, setMessage] = useState(null); // { type: "success"|"error", text }
   const [policyDraft, setPolicyDraft] = useState("");
   const [policySaving, setPolicySaving] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   useEffect(() => {
     fetch("/data.json")
@@ -273,6 +274,102 @@ function AdminApp() {
     }
   };
 
+  const toggleCategory = (name) => setExpandedCategories((prev) => ({ ...prev, [name]: !prev[name] }));
+
+  const countFor = (name) => data.explainers.filter((e) => e.category === name).length;
+
+  const handleDeleteCategory = async (name) => {
+    const inUse = countFor(name);
+    if (inUse > 0) {
+      alert(`Can't delete "${name}" — ${inUse} explainer${inUse !== 1 ? "s" : ""} still use it. Move or delete ${inUse !== 1 ? "them" : "it"} first.`);
+      return;
+    }
+    if (!window.confirm(`Delete the "${name}" category?`)) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "deleteCategory", categoryName: name }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || "Delete failed.");
+      } else {
+        setData((d) => ({ ...d, categories: d.categories.filter((c) => c.name !== name) }));
+      }
+    } catch (err) {
+      alert("Network error while deleting.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRenameCategory = async (oldName) => {
+    const newName = window.prompt("Rename category to:", oldName);
+    if (!newName || !newName.trim() || newName.trim() === oldName) return;
+    const trimmed = newName.trim();
+    if (data.categories.some((c) => c.name === trimmed)) {
+      alert(`A category called "${trimmed}" already exists.`);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "renameCategory", oldName, newName: trimmed }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || "Rename failed.");
+      } else {
+        setData((d) => ({
+          ...d,
+          categories: d.categories.map((c) => (c.name === oldName ? { ...c, name: trimmed } : c)),
+          explainers: d.explainers.map((e) => (e.category === oldName ? { ...e, category: trimmed } : e)),
+        }));
+      }
+    } catch (err) {
+      alert("Network error while renaming.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    const name = window.prompt("New category name:");
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    if (data.categories.some((c) => c.name === trimmed)) {
+      alert(`A category called "${trimmed}" already exists.`);
+      return;
+    }
+    const color = COLOR_CHOICES[Math.floor(Math.random() * COLOR_CHOICES.length)];
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, action: "createCategory", newCategory: { name: trimmed, color } }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert(result.error || "Could not create category.");
+      } else {
+        setData((d) => ({
+          ...d,
+          categories: [...d.categories, { name: trimmed, light: `bg-${color}-100 text-${color}-800`, dark: `bg-${color}-900/40 text-${color}-300` }],
+        }));
+        setExpandedCategories((prev) => ({ ...prev, [trimmed]: true }));
+      }
+    } catch (err) {
+      alert("Network error while creating category.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSavePrivacyPolicy = async () => {
     setMessage(null);
     setPolicySaving(true);
@@ -303,16 +400,17 @@ function AdminApp() {
           <span className="text-white font-semibold">Bash Explains Admin</span>
           <div className="flex gap-2">
             <button
-              onClick={() => { setMessage(null); setView("categories"); }}
-              className="rounded-md border border-stone-600 text-stone-200 text-sm font-medium px-3 py-2 hover:border-stone-400"
-            >
-              Categories
-            </button>
-            <button
               onClick={() => { setPolicyDraft(data.privacyPolicyHtml || ""); setMessage(null); setView("privacy"); }}
               className="rounded-md border border-stone-600 text-stone-200 text-sm font-medium px-3 py-2 hover:border-stone-400"
             >
               Privacy policy
+            </button>
+            <button
+              onClick={handleCreateCategory}
+              disabled={saving}
+              className="rounded-md border border-stone-600 text-stone-200 text-sm font-medium px-3 py-2 hover:border-stone-400 disabled:opacity-50"
+            >
+              + New category
             </button>
             <button
               onClick={startNew}
@@ -323,83 +421,46 @@ function AdminApp() {
           </div>
         </header>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-          <p className="text-sm text-slate-500 mb-4">{data.explainers.length} explainers</p>
-          <div className="space-y-2">
-            {data.explainers.map((e) => (
-              <div key={e.id} className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{e.title}</p>
-                  <p className="text-xs text-slate-500">{e.category}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => startEdit(e)} className="text-sm text-blue-600 hover:underline">Edit</button>
-                  <button onClick={() => handleDelete(e)} className="text-sm text-rose-600 hover:underline">Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === "categories") {
-    const countFor = (name) => data.explainers.filter((e) => e.category === name).length;
-    const handleDeleteCategory = async (name) => {
-      const inUse = countFor(name);
-      if (inUse > 0) {
-        alert(`Can't delete "${name}" — ${inUse} explainer${inUse !== 1 ? "s" : ""} still use it. Move or delete ${inUse !== 1 ? "them" : "it"} first.`);
-        return;
-      }
-      if (!window.confirm(`Delete the "${name}" category?`)) return;
-      setSaving(true);
-      try {
-        const res = await fetch("/api/admin-save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password, action: "deleteCategory", categoryName: name }),
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          alert(result.error || "Delete failed.");
-        } else {
-          setData((d) => ({ ...d, categories: d.categories.filter((c) => c.name !== name) }));
-        }
-      } catch (err) {
-        alert("Network error while deleting.");
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    return (
-      <div className="min-h-screen bg-stone-50">
-        <header className="border-b border-slate-800 bg-slate-900 px-4 sm:px-6 py-4 flex items-center justify-between">
-          <span className="text-white font-semibold">Categories</span>
-          <button onClick={() => setView("list")} className="text-sm text-stone-300 hover:text-white">
-            Back to list
-          </button>
-        </header>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6">
           <p className="text-sm text-slate-500 mb-4">
-            New categories are created from the explainer form. Deleting one only works if no explainer uses it anymore.
+            {data.explainers.length} explainers across {data.categories.length} categories
           </p>
           <div className="space-y-2">
             {data.categories.map((c) => {
-              const count = countFor(c.name);
+              const items = data.explainers.filter((e) => e.category === c.name);
+              const isOpen = !!expandedCategories[c.name];
               return (
-                <div key={c.name} className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`inline-block rounded-full text-xs px-2.5 py-1 font-medium ${c.light}`}>{c.name}</span>
-                    <span className="text-xs text-slate-400">{count} explainer{count !== 1 ? "s" : ""}</span>
+                <div key={c.name} className="rounded-md border border-slate-200 bg-white overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <button
+                      onClick={() => toggleCategory(c.name)}
+                      className="flex items-center gap-3 flex-1 text-left"
+                    >
+                      <span className={`text-xs ${isOpen ? "rotate-90" : ""} transition-transform`}>▶</span>
+                      <span className={`inline-block rounded-full text-xs px-2.5 py-1 font-medium ${c.light}`}>{c.name}</span>
+                      <span className="text-xs text-slate-400">{items.length} explainer{items.length !== 1 ? "s" : ""}</span>
+                    </button>
+                    <div className="flex gap-3 shrink-0 ml-3">
+                      <button onClick={() => handleRenameCategory(c.name)} className="text-xs text-blue-600 hover:underline">Rename</button>
+                      <button onClick={() => handleDeleteCategory(c.name)} className="text-xs text-rose-600 hover:underline">Delete</button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteCategory(c.name)}
-                    disabled={saving}
-                    className="text-sm text-rose-600 hover:underline disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
+                  {isOpen && (
+                    <div className="border-t border-slate-100">
+                      {items.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-slate-400">No explainers in this category yet.</p>
+                      ) : (
+                        items.map((e) => (
+                          <div key={e.id} className="flex items-center justify-between px-4 py-3 border-t border-slate-100 first:border-t-0">
+                            <p className="text-sm text-slate-900">{e.title}</p>
+                            <div className="flex gap-2 shrink-0 ml-3">
+                              <button onClick={() => startEdit(e)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                              <button onClick={() => handleDelete(e)} className="text-sm text-rose-600 hover:underline">Delete</button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
