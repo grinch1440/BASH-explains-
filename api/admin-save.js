@@ -11,6 +11,15 @@
 //   GITHUB_REPO      - the repo name, e.g. "BASH-explains-"
 //   GITHUB_BRANCH    - optional, defaults to "main"
 
+const VALID_ACTIONS = [
+  "upsert",
+  "delete",
+  "updatePrivacyPolicy",
+  "deleteCategory",
+  "renameCategory",
+  "createCategory",
+];
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -26,12 +35,12 @@ export default async function handler(req, res) {
     });
   }
 
-  const { password, action, explainer, id, newCategory, html, categoryName } = req.body || {};
+  const { password, action, explainer, id, newCategory, html, categoryName, oldName, newName } = req.body || {};
 
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: "Incorrect password." });
   }
-  if (action !== "upsert" && action !== "delete" && action !== "updatePrivacyPolicy" && action !== "deleteCategory") {
+  if (!VALID_ACTIONS.includes(action)) {
     return res.status(400).json({ error: "Invalid action." });
   }
   if (action === "upsert" && (!explainer || !explainer.id || !explainer.title)) {
@@ -45,6 +54,12 @@ export default async function handler(req, res) {
   }
   if (action === "deleteCategory" && !categoryName) {
     return res.status(400).json({ error: "Missing category name to delete." });
+  }
+  if (action === "renameCategory" && (!oldName || !newName)) {
+    return res.status(400).json({ error: "Missing old or new category name." });
+  }
+  if (action === "createCategory" && (!newCategory || !newCategory.name)) {
+    return res.status(400).json({ error: "Missing new category name." });
   }
 
   const apiBase = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data.json`;
@@ -79,7 +94,28 @@ export default async function handler(req, res) {
         });
       }
       data.categories = data.categories.filter((c) => c.name !== categoryName);
+    } else if (action === "renameCategory") {
+      if (!data.categories.some((c) => c.name === oldName)) {
+        return res.status(404).json({ error: `Category "${oldName}" not found.` });
+      }
+      if (data.categories.some((c) => c.name === newName)) {
+        return res.status(400).json({ error: `A category called "${newName}" already exists.` });
+      }
+      data.categories = data.categories.map((c) => (c.name === oldName ? { ...c, name: newName } : c));
+      data.explainers = data.explainers.map((e) => (e.category === oldName ? { ...e, category: newName } : e));
+    } else if (action === "createCategory") {
+      const alreadyExists = data.categories.some((c) => c.name === newCategory.name);
+      if (alreadyExists) {
+        return res.status(400).json({ error: `A category called "${newCategory.name}" already exists.` });
+      }
+      const color = newCategory.color || "slate";
+      data.categories.push({
+        name: newCategory.name,
+        light: `bg-${color}-100 text-${color}-800`,
+        dark: `bg-${color}-900/40 text-${color}-300`,
+      });
     } else {
+      // action === "upsert"
       // If this explainer is marked featured, unfeature every other one first.
       if (explainer.featured) {
         data.explainers = data.explainers.map((e) => ({ ...e, featured: false }));
@@ -105,14 +141,15 @@ export default async function handler(req, res) {
 
     // Step 3: commit the updated data.json back to GitHub.
     const newContentBase64 = Buffer.from(JSON.stringify(data, null, 2), "utf-8").toString("base64");
-    const commitMessage =
-      action === "delete"
-        ? `Admin: delete explainer ${id}`
-        : action === "updatePrivacyPolicy"
-        ? "Admin: update privacy policy"
-        : action === "deleteCategory"
-        ? `Admin: delete category ${categoryName}`
-        : `Admin: ${explainer.id ? "update" : "add"} explainer ${explainer.id}`;
+    const commitMessages = {
+      delete: `Admin: delete explainer ${id}`,
+      updatePrivacyPolicy: "Admin: update privacy policy",
+      deleteCategory: `Admin: delete category ${categoryName}`,
+      renameCategory: `Admin: rename category ${oldName} -> ${newName}`,
+      createCategory: `Admin: create category ${newCategory && newCategory.name}`,
+      upsert: `Admin: ${explainer && explainer.id ? "update" : "add"} explainer ${explainer && explainer.id}`,
+    };
+    const commitMessage = commitMessages[action];
 
     const putRes = await fetch(apiBase, {
       method: "PUT",
