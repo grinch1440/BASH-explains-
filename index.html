@@ -21,8 +21,6 @@
     letter-spacing: 0.02em;
   }
 </style>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1250932592374683"
-     crossorigin="anonymous"></script>
 </head>
 <body>
 <div id="root">
@@ -779,6 +777,13 @@ function BashExplains() {
         EXPLAINERS = data.explainers || [];
         TOPIC_DIRECTORY = data.topicDirectory || [];
         setDataState("ready");
+        // Deep link support: /?e=<explainer-id> opens that explainer directly,
+        // so individual explainers have real, shareable, crawlable URLs.
+        const params = new URLSearchParams(window.location.search);
+        const explainerId = params.get("e");
+        if (explainerId && EXPLAINERS.some((ex) => ex.id === explainerId)) {
+          setSelectedId(explainerId);
+        }
       })
       .catch(() => setDataState("error"));
   }, []);
@@ -823,23 +828,58 @@ function BashExplains() {
 
   const selected = dataState === "ready" ? EXPLAINERS.find((e) => e.id === selectedId) || null : null;
 
+  useEffect(() => {
+    document.title = selected ? `${selected.title} — Bash Explains` : "Bash Explains";
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute(
+      "href",
+      window.location.origin + "/" + (selected ? `?e=${encodeURIComponent(selected.id)}` : "")
+    );
+  }, [selected]);
+
   const handleOpen = (id) => {
     setSelectedId(id);
     setShowTopics(false);
     window.scrollTo?.(0, 0);
+    const url = new URL(window.location.href);
+    url.searchParams.set("e", id);
+    window.history.pushState({ explainerId: id }, "", url);
   };
 
   const handleBack = () => {
     setSelectedId(null);
     setShowTopics(false);
     window.scrollTo?.(0, 0);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("e");
+    window.history.pushState({}, "", url);
   };
 
   const handleShowTopics = () => {
     setSelectedId(null);
     setShowTopics(true);
     window.scrollTo?.(0, 0);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("e");
+    window.history.pushState({}, "", url);
   };
+
+  // Support the browser's back/forward buttons for explainer deep links.
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const explainerId = params.get("e");
+      setSelectedId(explainerId || null);
+      if (!explainerId) setShowTopics(false);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   return (
     <div className={dark ? "dark" : ""}>
