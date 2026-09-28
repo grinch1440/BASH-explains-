@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: https://projects-bash-explains.vercel.app/sitemap.xml
